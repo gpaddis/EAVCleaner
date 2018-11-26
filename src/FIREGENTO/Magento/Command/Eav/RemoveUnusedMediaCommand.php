@@ -8,7 +8,7 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use N98\Util\Console\Helper\Table\Renderer\RendererFactory;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
-
+use Symfony\Component\Console\Exception\InvalidArgumentException;
 
 class RemoveUnusedMediaCommand extends AbstractCommand
 {
@@ -24,8 +24,13 @@ class RemoveUnusedMediaCommand extends AbstractCommand
                 InputOption::VALUE_OPTIONAL,
                 'Output Format. One of [' . implode(',', RendererFactory::getFormats()) . ']'
             )
+            ->addOption(
+                'backup',
+                null,
+                InputOption::VALUE_REQUIRED,
+                'Move the product images to the backup directory instead of deleting them.'
+            )
         ;
-
     }
 
     /**
@@ -35,13 +40,12 @@ class RemoveUnusedMediaCommand extends AbstractCommand
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-
         $filesize = 0;
         $countFiles = 0;
 
         $isDryRun = $input->getOption('dry-run');
 
-        if(!$isDryRun) {
+        if (!$isDryRun) {
             $output->writeln('WARNING: this is not a dry run. If you want to do a dry-run, add --dry-run.');
             $question = new ConfirmationQuestion('Are you sure you want to continue? [No] ', false);
 
@@ -49,6 +53,12 @@ class RemoveUnusedMediaCommand extends AbstractCommand
             if (!$this->questionHelper->ask($input, $output, $question)) {
                 return;
             }
+        }
+
+        $backupDir = $input->getOption('backup');
+
+        if ($backupDir && !$this->isDirWritable($backupDir)) {
+            throw new InvalidArgumentException("The directory {$backupDir} does not exist or is not writable.");
         }
 
         $this->detectMagento($output);
@@ -63,18 +73,19 @@ class RemoveUnusedMediaCommand extends AbstractCommand
             $i=0;
 
             $directoryIterator = new \RecursiveDirectoryIterator($imageDir);
-            foreach( new \RecursiveIteratorIterator($directoryIterator) as $file) {
-
-                if(strpos($file, "/cache") !== false || is_dir($file) ) {
+            foreach (new \RecursiveIteratorIterator($directoryIterator) as $file) {
+                if (strpos($file, "/cache") !== false || is_dir($file)) {
                     continue;
                 }
 
-                $filePath      = str_replace($imageDir, "", $file);
-                if(empty($filePath)) continue;
+                $filePath = str_replace($imageDir, "", $file);
+                if (empty($filePath)) {
+                    continue;
+                }
 
-                $value         = $coreRead->fetchOne('SELECT value FROM ' . $mediaGallery . ' WHERE value = ?', array($filePath));
+                $value = $coreRead->fetchOne('SELECT value FROM ' . $mediaGallery . ' WHERE value = ?', array($filePath));
 
-                if($value == false) {
+                if ($value == false) {
                     $row = array();
                     $row[] = $filePath;
                     $table[] = $row;
@@ -82,8 +93,13 @@ class RemoveUnusedMediaCommand extends AbstractCommand
                     $countFiles++;
 
                     echo '## REMOVING: ' . $filePath . ' ##';
-                    if(!$isDryRun) {
-                        unlink($file);
+                    if (!$isDryRun) {
+                        if ($backupDir) {
+                            $this->backup($file, $backupDir, $filePath);
+                            echo ' -- backup saved to ' . $backupDir . $filePath;
+                        } else {
+                            unlink($file);
+                        }
                     } else {
                         echo ' -- DRY RUN';
                     }
@@ -102,5 +118,36 @@ class RemoveUnusedMediaCommand extends AbstractCommand
 
             $output->writeln("Found " . number_format($filesize/1024/1024, '2') . " MB unused images in $countFiles files");
         }
+    }
+
+    /**
+     * Move a file from origin to backupDir keeping the relative filePath.
+     *
+     * @param string $origin
+     * @param string $backupDir
+     * @param string $filePath
+     */
+    protected function backup($origin, $backupDir, $filePath)
+    {
+        $filename = basename($origin);
+        $relativeFileDir = str_replace($filename, "", $filePath);
+        $destinationDir = $backupDir . $relativeFileDir;
+        if (!is_dir($destinationDir)) {
+            mkdir($destinationDir, 0777, true);
+        }
+        if (!rename($origin, $backupDir . $filePath)) {
+            throw new \InvalidArgumentException("Error moving {$filePath} to {$destinationDir}");
+        }
+    }
+
+    /**
+     * Check if a directory exists and is writable.
+     *
+     * @param string $dir
+     * @return boolean
+     */
+    protected function isDirWritable($dir)
+    {
+        return is_dir($dir) && is_writable($dir);
     }
 }
