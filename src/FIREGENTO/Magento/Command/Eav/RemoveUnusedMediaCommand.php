@@ -28,7 +28,7 @@ class RemoveUnusedMediaCommand extends AbstractCommand
                 'backup',
                 null,
                 InputOption::VALUE_REQUIRED,
-                'Move the product images to the backup directory instead of deleting them.'
+                'Don\'t delete the product images, move them to a backup directory'
             )
         ;
     }
@@ -121,21 +121,21 @@ class RemoveUnusedMediaCommand extends AbstractCommand
     }
 
     /**
-     * Move a file from origin to backupDir keeping the relative filePath.
+     * Move a file from origin to backupDir keeping the directory structure ($relativePath).
      *
      * @param string $origin
      * @param string $backupDir
-     * @param string $filePath
+     * @param string $relativePath
      */
-    protected function backup($origin, $backupDir, $filePath)
+    protected function backup($origin, $backupDir, $relativePath)
     {
         $filename = basename($origin);
-        $relativeFileDir = str_replace($filename, "", $filePath);
-        $destinationDir = $backupDir . $relativeFileDir;
+        $relativeDir = str_replace($filename, "", $relativePath);
+        $destinationDir = $backupDir . $relativeDir;
         if (!is_dir($destinationDir)) {
             mkdir($destinationDir, 0777, true);
         }
-        if (!rename($origin, $backupDir . $filePath)) {
+        if (!rename($origin, $backupDir . $relativePath)) {
             throw new \InvalidArgumentException("Error moving {$filePath} to {$destinationDir}");
         }
     }
