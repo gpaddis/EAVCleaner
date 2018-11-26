@@ -8,6 +8,7 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use N98\Util\Console\Helper\Table\Renderer\RendererFactory;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
+use Symfony\Component\Console\Exception\RuntimeException;
 use Symfony\Component\Console\Exception\InvalidArgumentException;
 
 class RemoveUnusedMediaCommand extends AbstractCommand
@@ -136,7 +137,7 @@ class RemoveUnusedMediaCommand extends AbstractCommand
             mkdir($destinationDir, 0777, true);
         }
         if (!rename($origin, $backupDir . $relativePath)) {
-            throw new \InvalidArgumentException("Error moving {$filePath} to {$destinationDir}");
+            throw new RuntimeException("Error moving {$filePath} to {$destinationDir}");
         }
     }
 
