@@ -75,7 +75,7 @@ class RemoveUnusedMediaCommand extends AbstractCommand
 
             $directoryIterator = new \RecursiveDirectoryIterator($imageDir);
             foreach (new \RecursiveIteratorIterator($directoryIterator) as $file) {
-                if (preg_match("/(cache|amshopby|placeholder|watermark)/i", $file) || is_dir($file)) {
+                if (!$this->isCatalogProductImage($file) || is_dir($file)) {
                     continue;
                 }
 
@@ -139,6 +139,17 @@ class RemoveUnusedMediaCommand extends AbstractCommand
         if (!rename($origin, $backupDir . $relativePath)) {
             throw new RuntimeException("Error moving {$filePath} to {$destinationDir}");
         }
+    }
+
+    /**
+     * Return true if the file path matches the pattern of auto generated product images.
+     *
+     * @param string $file
+     * @return boolean
+     */
+    protected function isCatalogProductImage($filePath)
+    {
+        return !preg_match("/(cache|amshopby|placeholder|watermark)/i", $filePath);
     }
 
     /**
