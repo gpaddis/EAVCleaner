@@ -31,6 +31,12 @@ class RemoveUnusedMediaCommand extends AbstractCommand
                 InputOption::VALUE_REQUIRED,
                 'Don\'t delete the product images, move them to a backup directory'
             )
+            ->addOption(
+                'touch',
+                null,
+                InputOption::VALUE_NONE,
+                'Modify the backup file date and time (use only with --backup)'
+            )
         ;
     }
 
@@ -99,7 +105,7 @@ class RemoveUnusedMediaCommand extends AbstractCommand
                     }
                     if (!$isDryRun) {
                         if ($backupDir) {
-                            $this->backup($file, $backupDir, $filePath);
+                            $this->backup($file, $backupDir, $filePath, $input->getOption('touch'));
                         } else {
                             unlink($file);
                         }
@@ -125,12 +131,14 @@ class RemoveUnusedMediaCommand extends AbstractCommand
 
     /**
      * Move a file from origin to backupDir keeping the directory structure ($relativePath).
+     * If the parameter $touch is true, the backup file date & time will be updated.
      *
      * @param string $origin
      * @param string $backupDir
      * @param string $relativePath
+     * @param boolean $touch
      */
-    protected function backup($origin, $backupDir, $relativePath)
+    protected function backup($origin, $backupDir, $relativePath, $touch = false)
     {
         $filename = basename($origin);
         $relativeDir = str_replace($filename, "", $relativePath);
@@ -140,6 +148,11 @@ class RemoveUnusedMediaCommand extends AbstractCommand
         }
         if (!rename($origin, $backupDir . $relativePath)) {
             throw new RuntimeException("Error moving {$filePath} to {$destinationDir}");
+        }
+        if ($touch === true) {
+            if (!touch($backupDir . $relativePath)) {
+                throw new RuntimeException("Error modifying date and time of {$relativePath}");
+            }
         }
     }
 
