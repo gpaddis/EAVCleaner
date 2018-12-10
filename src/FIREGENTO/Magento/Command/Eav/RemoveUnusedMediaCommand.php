@@ -94,10 +94,12 @@ class RemoveUnusedMediaCommand extends AbstractCommand
                     $countFiles++;
 
                     echo '## REMOVING: ' . $filePath . ' ##';
+                    if ($backupDir) {
+                        echo ' -- backup saved to ' . $backupDir . $filePath;
+                    }
                     if (!$isDryRun) {
                         if ($backupDir) {
                             $this->backup($file, $backupDir, $filePath);
-                            echo ' -- backup saved to ' . $backupDir . $filePath;
                         } else {
                             unlink($file);
                         }
