@@ -20,6 +20,12 @@ class RemoveUnusedMediaCommand extends AbstractCommand
             ->setDescription('Remove unused product images')
             ->addOption('dry-run')
             ->addOption(
+                'force',
+                null,
+                InputOption::VALUE_NONE,
+                'Don\'t ask any interactive questions (use this option with automated scripts or cronjobs)'
+            )
+            ->addOption(
                 'format',
                 null,
                 InputOption::VALUE_OPTIONAL,
@@ -51,13 +57,14 @@ class RemoveUnusedMediaCommand extends AbstractCommand
         $countFiles = 0;
 
         $isDryRun = $input->getOption('dry-run');
+        $force = $input->getOption('force');
 
         if (!$isDryRun) {
             $output->writeln('WARNING: this is not a dry run. If you want to do a dry-run, add --dry-run.');
             $question = new ConfirmationQuestion('Are you sure you want to continue? [No] ', false);
 
             $this->questionHelper = $this->getHelper('question');
-            if (!$this->questionHelper->ask($input, $output, $question)) {
+            if (!$force && !$this->questionHelper->ask($input, $output, $question)) {
                 return;
             }
         }
